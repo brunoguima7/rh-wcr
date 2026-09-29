@@ -10,7 +10,7 @@ export function download(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
-export async function exportPeopleWorkbook(people: Person[], db: Database) {
+export async function buildPeopleWorkbook(people: Person[], db: Database) {
   const { default: ExcelJS } = await import("exceljs");
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Pessoas");
@@ -48,11 +48,20 @@ export async function exportPeopleWorkbook(people: Person[], db: Database) {
   };
   sheet.views = [{ state: "frozen", ySplit: 1 }];
   sheet.autoFilter = "A1:K1";
-  const bytes = await workbook.xlsx.writeBuffer();
-  download(new Blob([bytes as ArrayBuffer]), "wcr-pessoas.xlsx");
+  return workbook.xlsx.writeBuffer();
 }
 
-export async function exportAdmissionPdf(db: Database, assignment: Assignment) {
+export async function exportPeopleWorkbook(people: Person[], db: Database) {
+  const bytes = await buildPeopleWorkbook(people, db);
+  download(
+    new Blob([bytes as ArrayBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }),
+    "wcr-pessoas.xlsx",
+  );
+}
+
+export async function buildAdmissionPdf(db: Database, assignment: Assignment) {
   const { jsPDF } = await import("jspdf");
   const { default: autoTable } = await import("jspdf-autotable");
   const person = db.people.find((p) => p.id === assignment.person_id)!;
@@ -66,9 +75,11 @@ export async function exportAdmissionPdf(db: Database, assignment: Assignment) {
     `${person.name} | ${formatCpf(person.cpf)}`,
     `${contract.name} | ${assignment.employment} | ${assignment.status}`,
   ];
-  pdf.text(pdf.splitTextToSize(heading.join("\n"), 180), 14, 32);
+  const headingLines = pdf.splitTextToSize(heading.join("\n"), 180);
+  pdf.text(headingLines, 14, 32);
   autoTable(pdf, {
-    startY: 52,
+    startY: Math.max(52, 32 + headingLines.length * 5 + 6),
+    margin: { bottom: 20 },
     head: [["Item", "Situação", "Observações"]],
     body: requirementsFor(db, assignment).map((r) => {
       const check = db.checks.find(
@@ -88,5 +99,11 @@ export async function exportAdmissionPdf(db: Database, assignment: Assignment) {
       );
     },
   });
+  return pdf;
+}
+
+export async function exportAdmissionPdf(db: Database, assignment: Assignment) {
+  const pdf = await buildAdmissionPdf(db, assignment);
+  const person = db.people.find((p) => p.id === assignment.person_id)!;
   pdf.save(`admissao-${person.name.replace(/[^a-zA-Z0-9]/g, "-")}.pdf`);
 }

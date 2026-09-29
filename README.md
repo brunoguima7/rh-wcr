@@ -144,6 +144,8 @@ npm run build
 
 Os testes usam PostgreSQL local via PGlite com schemas mínimos simulando Auth e Storage para validar migrações, políticas de acesso, vínculos, importação e transações. Não substituem o teste final no projeto real do Supabase.
 
+Os testes de arquivos também geram e reabrem um Excel, verificam CPF com zero inicial e textos que começam com `=`, leem o formato da planilha de Santos e geram um PDF de várias páginas com nome longo. A conferência visual automatizada final em desktop/celular não foi concluída: o navegador bloqueou o acesso pela sua política. Revise essas telas antes de colocar o sistema em produção.
+
 - `app/`: página, identidade visual e configuração Next.js.
 - `components/`: telas e formulários em React, estilizados com Tailwind no JSX.
 - `lib/model.ts`: regras de checklist, vagas, CPF e catálogo inicial.
